@@ -1,0 +1,177 @@
+/* Scoped to .asg-root — keep new rules under the asg- prefix so nothing leaks. */
+
+.asg-root {
+  --asg-bg: #f6f7f9;
+  --asg-panel: #ffffff;
+  --asg-border: #e4e6eb;
+  --asg-text: #1c1e21;
+  --asg-muted: #6b7280;
+  --asg-accent: #b5341f;
+  --asg-ok: #157347;
+  --asg-err: #b02a37;
+
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica,
+    Arial, sans-serif;
+  color: var(--asg-text);
+  background: var(--asg-bg);
+  min-height: 100vh;
+}
+
+.asg-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--asg-border);
+  background: var(--asg-panel);
+}
+.asg-header h1 {
+  font-size: 20px;
+  margin: 0;
+}
+.asg-cart-count {
+  color: var(--asg-muted);
+  font-size: 14px;
+}
+
+.asg-layout {
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  gap: 24px;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 24px;
+}
+@media (max-width: 800px) {
+  .asg-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.asg-col--order {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.asg-panel {
+  background: var(--asg-panel);
+  border: 1px solid var(--asg-border);
+  border-radius: 10px;
+  padding: 16px;
+}
+.asg-panel__title {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0 0 12px;
+}
+
+.asg-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+}
+.asg-card {
+  background: var(--asg-panel);
+  border: 1px solid var(--asg-border);
+  border-radius: 10px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.asg-card__img {
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  width: 100%;
+  display: block;
+  background: #eee;
+}
+.asg-card__body {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+}
+.asg-card__name {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0;
+}
+.asg-card__desc {
+  font-size: 12px;
+  color: var(--asg-muted);
+  margin: 0;
+  flex: 1;
+}
+.asg-card__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 4px;
+}
+.asg-price {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.asg-btn {
+  font: inherit;
+  font-size: 13px;
+  padding: 6px 12px;
+  border-radius: 7px;
+  border: 1px solid var(--asg-border);
+  background: #fff;
+  cursor: pointer;
+}
+.asg-btn:hover {
+  background: #f0f1f3;
+}
+.asg-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.asg-btn--primary {
+  background: var(--asg-accent);
+  border-color: var(--asg-accent);
+  color: #fff;
+  padding: 10px 12px;
+  font-size: 14px;
+}
+.asg-btn--primary:hover:not(:disabled) {
+  filter: brightness(0.94);
+}
+
+.asg-label {
+  display: block;
+  font-size: 12px;
+  color: var(--asg-muted);
+  margin-bottom: 4px;
+}
+.asg-input {
+  font: inherit;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--asg-border);
+  border-radius: 7px;
+  box-sizing: border-box;
+}
+.asg-coupon {
+  background: var(--asg-panel);
+  border: 1px solid var(--asg-border);
+  border-radius: 10px;
+  padding: 16px;
+}
+
+.asg-muted {
+  color: var(--asg-muted);
+  font-size: 13px;
+}
+.asg-error,
+.asg-err {
+  color: var(--asg-err);
+  font-size: 13px;
+}
+.asg-ok {
+  border-color: var(--asg-ok);
+}
