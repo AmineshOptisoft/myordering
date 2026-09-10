@@ -42,7 +42,10 @@ module.exports = function orderRoutes({ store, couponValidator }) {
     "/",
     wrap(async (req, res) => {
       const { body } = req;
+      //console.log("BODY", body);
       const { items, couponCode } = body;
+      let couponApplied = false;
+      let refinedProductArray = [];
 
       // 1. Validate the body. First failure wins, in this order:
       // - not an object / items missing or empty / item missing fields /
@@ -66,7 +69,6 @@ module.exports = function orderRoutes({ store, couponValidator }) {
 
       if (items.some((item) =>
         !item.productId ||
-        item.priceCents == null ||
         item.quantity == null
       )
       ) {
@@ -77,38 +79,67 @@ module.exports = function orderRoutes({ store, couponValidator }) {
         throw new ApiError(422, "INVALID_ORDER", "Items must have a positive integer quantity");
       }
 
-      // check if productId is duplicate if yes then add quntaty in same object
-      const linesMap = new Map();
-      for (const item of items) {
-        const existing = linesMap.get(item.productId);
-        linesMap.set(item.productId, {
-          quantity: (existing ? existing.quantity : 0) + item.quantity,
-          priceCents: item.priceCents
-        });
-      }
-      const lines = Array.from(linesMap, ([productId, { quantity, priceCents }]) => ({ productId, quantity, priceCents }));
 
-      // check if productId exist
-      for (const item of lines) {
+
+
+      // check duplicate productId in items and combine them get priceCents and set it from store.getProduct
+
+
+      for (const item of items) {
         const product = await store.getProduct(item.productId);
+
         if (!product) {
-          throw new ApiError(422, "PRODUCT_NOT_FOUND", "Product not found");
+          throw new ApiError(
+            422,
+            "PRODUCT_NOT_FOUND",
+            "Product not found",
+            { productId: item.productId }
+          );
+        }
+
+        const existing = refinedProductArray.find(
+          (data) => data.productId === item.productId
+        );
+
+        if (existing) {
+          existing.quantity += item.quantity;
+          existing.lineTotalCents = existing.priceCents * existing.quantity;
+        } else {
+          refinedProductArray.push({
+            productId: item.productId,
+            quantity: item.quantity,
+            priceCents: product.priceCents,
+            name: product.name,
+            lineTotalCents: product.priceCents * item.quantity,
+          });
         }
       }
 
-      // check if quantity > stock
-      for (const item of lines) {
+      // check for INSUFFICIENT_STOCK
+      for (const item of refinedProductArray) {
         const product = await store.getProduct(item.productId);
         if (item.quantity > product.stock) {
-          throw new ApiError(422, "INSUFFICIENT_STOCK", "Insufficient stock");
+          throw new ApiError(
+            422,
+            "INSUFFICIENT_STOCK",
+            "Insufficient stock",
+            { productId: item.productId, available: product.stock }
+          );
         }
       }
+
+      const lines = refinedProductArray;
+
+
+      console.log("lines lineslines lineslines lines", lines);
 
       // if coupon code is present and valid
       if (couponCode) {
         const isValidCoupon = await couponValidator.isValid(couponCode.trim().toUpperCase());
         if (!isValidCoupon) {
           throw new ApiError(422, "INVALID_COUPON", "Invalid coupon");
+        } else {
+          couponApplied = true;
         }
       }
 
@@ -123,19 +154,24 @@ module.exports = function orderRoutes({ store, couponValidator }) {
 
       const subtotalCents = lines.reduce((sum, item) => sum + (item.priceCents * item.quantity), 0);
 
-      const discountCents = couponCode ? Math.round((subtotalCents * 0.1) / 100) * 100 : 0;
+      const discountCents = couponCode ? Math.round((subtotalCents) / 10) : 0;
 
       const totalCents = subtotalCents - discountCents;
 
       const order = await store.saveOrder({
-        lines,
-        couponCode,
+
+        createdAt: new Date().toISOString(),
+        items: lines,
+        couponCode: couponCode || null,
         subtotalCents,
         discountCents,
         totalCents,
+        couponApplied
       });
 
-      res.status(201).json({ data: order });
+
+
+      res.status(201).json({ data: order, code: "SUCCESS", });
 
     })
   );
