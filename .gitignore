@@ -1,5 +1,5 @@
 node_modules/
-coupons/
+/coupons/
 *.gz
 dist/
 build/
