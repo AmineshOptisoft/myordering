@@ -18,7 +18,7 @@ import React from "react";
  * Props are yours to design. `onChange(code)` lifting the value up is the
  * minimum.
  */
-export default function CouponField({ value, onChange, status }) {
+export default function CouponField({ value, onChange, status, orderError }) {
   return (
     <div className="asg-coupon">
       <label className="asg-label" htmlFor="coupon">
@@ -33,6 +33,7 @@ export default function CouponField({ value, onChange, status }) {
         autoComplete="off"
       />
       {/* TODO: reflect `status` — idle / pending / applied / rejected(reason) */}
+      {orderError && <p className="asg-error">{orderError}</p>}
     </div>
   );
 }

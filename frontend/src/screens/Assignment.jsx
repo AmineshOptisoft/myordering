@@ -25,13 +25,33 @@ export default function Assignment() {
   const lines = useCart((s) => s.lines);
   const clear = useCart((s) => s.clear);
 
-  const [coupon, setCoupon] = useState("");
+  const [coupon, setCoupon] = useState(null);
   const placeOrder = usePlaceOrder();
+  const [orderError, setOrderError] = useState(null);
+  const [orderSuccess, setOrderSuccess] = useState(null);
 
   // TODO: build payload from `lines` (+ coupon) and call placeOrder.mutate(...)
   const onPlaceOrder = () => {
     // eslint-disable-next-line no-alert
-    alert("Place order not wired up yet — see src/screens/Assignment.jsx");
+    // alert("Place order not wired up yet — see src/screens/Assignment.jsx");
+    placeOrder
+      .mutateAsync({ items: lines, couponCode: coupon })
+      .then((order) => {
+        setOrderSuccess(order);
+        setOrderError(null);
+        setCoupon(null);
+        clear();
+      })
+      .catch((error) => {
+        setOrderSuccess(null);
+        setOrderError({
+          name: error.name,
+          status: error.status,
+          code: error.code,
+          message: error.message,
+          details: error.details,
+        });
+      });
   };
 
   return (
@@ -42,14 +62,16 @@ export default function Assignment() {
       </header>
 
       <main className="asg-layout">
+
         <section className="asg-col asg-col--menu">
           <h2 className="asg-panel__title">Menu</h2>
           <ProductGrid />
         </section>
 
         <aside className="asg-col asg-col--order">
+
           <CartPanel />
-          <CouponField value={coupon} onChange={setCoupon} status="idle" />
+          <CouponField value={coupon} onChange={setCoupon} status="idle" orderError={orderError?.code === "INVALID_COUPON" ? orderError?.message : null} />
           <button
             className="asg-btn asg-btn--primary"
             disabled={lines.length === 0}
@@ -59,7 +81,20 @@ export default function Assignment() {
           </button>
 
           {/* TODO: error area for INSUFFICIENT_STOCK / NETWORK / etc. */}
+          {orderError &&
+            ["INSUFFICIENT_STOCK", "NETWORK"].includes(orderError.code) && (
+              <div className="asg-error">
+                <p>{orderError.message}</p>
+
+                {orderError.code === "INSUFFICIENT_STOCK" &&
+                  orderError.details?.available !== undefined && (
+                    <p>Only {orderError.details.available} {orderError.details.name} left</p>
+                  )}
+
+              </div>
+            )}
           {/* TODO: <OrderSummary order={...} onDone={clear} /> after success */}
+          {orderSuccess && <OrderSummary order={orderSuccess} onDone={clear} />}
         </aside>
       </main>
     </div>
