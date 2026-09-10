@@ -21,26 +21,72 @@ export const useCart = create(
   persist(
     (set, get) => ({
       lines: [],
-
       addLine: (product, quantity = 1) => {
         // TODO: if a line for product.id already exists, increase its quantity
         //       instead of adding a second line.
-        set((state) => ({
-          lines: [
-            ...state.lines,
-            {
-              productId: product.id,
-              name: product.name,
-              priceCents: product.priceCents,
-              quantity,
-            },
-          ],
-        }));
+        // set((state) => ({
+        //   lines: [
+        //     ...state.lines,
+        //     {
+        //       productId: product.id,
+        //       name: product.name,
+        //       priceCents: product.priceCents,
+        //       quantity,
+        //     },
+        //   ],
+        // }));
+        set((state) => {
+          const existingLine = state.lines.find(
+            (line) => line.productId === product.id
+          );
+
+          // If product already exists, increase its quantity
+          if (existingLine) {
+            return {
+              lines: state.lines.map((line) =>
+                line.productId === product.id
+                  ? {
+                    ...line,
+                    quantity: line.quantity + quantity,
+                  }
+                  : line
+              ),
+            };
+          }
+
+          // If product doesn't exist, add a new line
+          return {
+            lines: [
+              ...state.lines,
+              {
+                productId: product.id,
+                name: product.name,
+                priceCents: product.priceCents,
+                quantity,
+              },
+            ],
+          };
+        });
       },
 
       setQuantity: (productId, quantity) => {
         // TODO: set the line's quantity; if quantity <= 0 remove the line.
-        throw new Error("setQuantity not implemented");
+        if (quantity <= 0) {
+          get().removeLine(productId);
+        } else {
+          set((state) => ({
+            lines: state.lines.map((line) =>
+              line.productId === productId
+                ? {
+                  ...line,
+                  quantity,
+                }
+                : line
+            ),
+          }));
+        }
+
+        // throw new Error("setQuantity not implemented");
       },
 
       removeLine: (productId) =>
@@ -63,5 +109,11 @@ export const selectCount = (state) =>
  * TODO: implement. Must stay integer — no floating point.
  */
 export const selectSubtotalCents = (state) => {
-  throw new Error("selectSubtotalCents not implemented");
+  let total = state.lines.reduce(
+    (total, line) => total + line.priceCents * line.quantity,
+    0
+  );
+
+  return parseInt(total)
+  // throw new Error("selectSubtotalCents not implemented");
 };

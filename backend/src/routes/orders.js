@@ -123,7 +123,7 @@ module.exports = function orderRoutes({ store, couponValidator }) {
             422,
             "INSUFFICIENT_STOCK",
             "Insufficient stock",
-            { productId: item.productId, available: product.stock }
+            { productId: item.productId, available: product.stock, name: product.name }
           );
         }
       }
