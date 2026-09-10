@@ -41,11 +41,102 @@ module.exports = function orderRoutes({ store, couponValidator }) {
   router.post(
     "/",
     wrap(async (req, res) => {
-      throw new ApiError(
-        501,
-        "NOT_IMPLEMENTED",
-        "POST /orders is not implemented yet — see backend/src/routes/orders.js"
-      );
+      const { body } = req;
+      const { items, couponCode } = body;
+
+      // 1. Validate the body. First failure wins, in this order:
+      // - not an object / items missing or empty / item missing fields /
+      //   quantity not a positive integer      -> 422 INVALID_ORDER
+      // - a productId does not exist            -> 422 PRODUCT_NOT_FOUND
+      // - quantity > current stock              -> 422 INSUFFICIENT_STOCK
+      // - couponCode present but not valid      -> 422 INVALID_COUPON
+      // On any failure: no order created, no stock changed.
+
+      if (typeof body !== "object" || body === null) {
+        throw new ApiError(422, "INVALID_ORDER", "Body must be an object");
+      }
+
+      if (!items || !Array.isArray(items) || items.length === 0) {
+        throw new ApiError(422, "INVALID_ORDER", "Items must be a non-empty array");
+      }
+
+      if (items.some(item => typeof item !== "object" || item === null)) {
+        throw new ApiError(422, "INVALID_ORDER", "Items must be an array of objects");
+      }
+
+      if (items.some((item) =>
+        !item.productId ||
+        item.priceCents == null ||
+        item.quantity == null
+      )
+      ) {
+        throw new ApiError(422, "INVALID_ORDER", "Item fields are missing");
+      }
+
+      if (items.some(item => !item.quantity || typeof item.quantity !== "number" || !Number.isInteger(item.quantity) || item.quantity <= 0)) {
+        throw new ApiError(422, "INVALID_ORDER", "Items must have a positive integer quantity");
+      }
+
+      // check if productId is duplicate if yes then add quntaty in same object
+      const linesMap = new Map();
+      for (const item of items) {
+        const existing = linesMap.get(item.productId);
+        linesMap.set(item.productId, {
+          quantity: (existing ? existing.quantity : 0) + item.quantity,
+          priceCents: item.priceCents
+        });
+      }
+      const lines = Array.from(linesMap, ([productId, { quantity, priceCents }]) => ({ productId, quantity, priceCents }));
+
+      // check if productId exist
+      for (const item of lines) {
+        const product = await store.getProduct(item.productId);
+        if (!product) {
+          throw new ApiError(422, "PRODUCT_NOT_FOUND", "Product not found");
+        }
+      }
+
+      // check if quantity > stock
+      for (const item of lines) {
+        const product = await store.getProduct(item.productId);
+        if (item.quantity > product.stock) {
+          throw new ApiError(422, "INSUFFICIENT_STOCK", "Insufficient stock");
+        }
+      }
+
+      // if coupon code is present and valid
+      if (couponCode) {
+        const isValidCoupon = await couponValidator.isValid(couponCode.trim().toUpperCase());
+        if (!isValidCoupon) {
+          throw new ApiError(422, "INVALID_COUPON", "Invalid coupon");
+        }
+      }
+
+      // 2. On success:
+      //       - decrement stock (store.commitStock)
+      //       - subtotalCents = sum(priceCents * quantity)
+      //       - discountCents = valid coupon ? round-half-up(10% of subtotal) : 0
+      //       - totalCents    = subtotalCents - discountCents
+      //       - persist via store.saveOrder, respond 201 with the spec shape
+
+      await store.commitStock(lines);
+
+      const subtotalCents = lines.reduce((sum, item) => sum + (item.priceCents * item.quantity), 0);
+
+      const discountCents = couponCode ? Math.round((subtotalCents * 0.1) / 100) * 100 : 0;
+
+      const totalCents = subtotalCents - discountCents;
+
+      const order = await store.saveOrder({
+        lines,
+        couponCode,
+        subtotalCents,
+        discountCents,
+        totalCents,
+      });
+
+      res.status(201).json({ data: order });
+
     })
   );
 
